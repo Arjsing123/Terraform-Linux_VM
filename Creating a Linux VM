@@ -1,0 +1,90 @@
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=4.1.0"
+    }
+  }
+}
+
+# Configure the Microsoft Azure Provider
+provider "azurerm" {
+  features {}
+   client_id      = "c9278504-ec28-43dc-b4ea-d9dee47a06d0"
+  client_secret   = "cAL8Q~Wco1AUxCuw7Ck2HwkG.ewlNm-FYO.XEbP3"
+  tenant_id       = "66286522-4087-4661-9788-c8bd00a66bb9"
+  subscription_id = "903e3a48-5886-40ad-9a52-4ef52d824ed3"
+
+}
+
+# Create a resource group
+resource "azurerm_resource_group" "Resource_Group" {
+  name     = "RG7"
+  location = "North Europe"
+}
+# Create a Storage account
+
+resource "azurerm_storage_account" "appstore400009079998" {
+  name                     = "appstore400009079998"
+  resource_group_name      = "RG7"
+  location                 = "North Europe"
+  account_tier             = "Standard"
+  account_replication_type = "LRS"  
+}
+
+# Create A Azure Linux Virtual Machine
+
+# Create a Virtual Network
+  resource "azurerm_virtual_network" "VNet" {
+  name                = "VNet1"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.Resource_Group.location
+  resource_group_name = azurerm_resource_group.Resource_Group.name
+}
+
+resource "azurerm_subnet" "Subnet" {
+  name                 = "Subnet1"
+  resource_group_name  = azurerm_resource_group.Resource_Group.name
+  virtual_network_name = azurerm_virtual_network.VNet.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+
+resource "azurerm_network_interface" "NIC" {
+  name                = "NIC"
+  location            = azurerm_resource_group.Resource_Group.location
+  resource_group_name = azurerm_resource_group.Resource_Group.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.Subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_linux_virtual_machine" "MyLinuxVM" {
+  name                = "MyLinuxMachine"
+  resource_group_name = azurerm_resource_group.Resource_Group.name
+  location            = azurerm_resource_group.Resource_Group.location
+  size                = "Standard_D2s_v3"
+  admin_username      = "adminuser"
+  admin_password = "April@123456"
+  disable_password_authentication = "false"
+  network_interface_ids = [
+    azurerm_network_interface.NIC.id
+  ]
+
+
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+}
